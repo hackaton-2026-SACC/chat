@@ -2,7 +2,13 @@ FROM python:3.13-alpine AS base
 
 WORKDIR /app
 
-# COPY licitacoes.db . (Removido ou comentado porque está sendo ignorado no envio)
+RUN apk add git git-lfs
+
+COPY .git .
+
+COPY .gitattributes .
+
+RUN git lfs pull
 
 COPY requirements.txt .
 

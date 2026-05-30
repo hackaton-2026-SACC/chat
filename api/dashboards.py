@@ -119,44 +119,101 @@ def dashboardd(db: Session = Depends(get_db)) -> DashboardData:
         "evolucao_gastos_ano": evolucao_gastos_ano,
     }
 
-@router.get("/{municipio_ibge_id}")
-async def municipio_dashboard(municipio_ibge_id: str) -> DashboardMunicipioData:
+@router.get("/{municipio}")
+def municipio_dashboard(municipio: str, db: Session = Depends(get_db)) -> DashboardMunicipioData:
+    
+    query_contratos_mun = """
+        SELECT count(*) AS total_contratos
+        FROM resultados_itens r
+        JOIN itens i ON r.numero_controle_pncp = i.numero_controle_pncp AND r.numero_item = i.numero_item
+        JOIN editais e ON i.numero_controle_pncp = e.numero_controle_pncp
+        WHERE e.municipio = :municipio AND e.uf = 'PB'
+    """
+    contratos_pelo_municipio = db.execute(text(query_contratos_mun), {"municipio": municipio}).scalar() or 0
+
+    query_gasto_mun = """
+        SELECT SUM(r.valor_homologado_total) AS gasto_pelo_municipio
+        FROM resultados_itens r
+        JOIN itens i ON r.numero_controle_pncp = i.numero_controle_pncp AND r.numero_item = i.numero_item
+        JOIN editais e ON i.numero_controle_pncp = e.numero_controle_pncp
+        WHERE e.municipio = :municipio AND e.uf = 'PB'
+    """
+    gasto_pelo_municipio = db.execute(text(query_gasto_mun), {"municipio": municipio}).scalar() or 0.0
+
+    query_orgaos = """
+        SELECT e.orgao_nome, COUNT(DISTINCT e.numero_controle_pncp) AS total_editais
+        FROM editais e
+        WHERE e.municipio = :municipio AND e.uf = 'PB'
+        GROUP BY e.orgao_cnpj, e.orgao_nome
+        ORDER BY total_editais DESC
+        LIMIT 10
+    """
+    orgaos_mais_contratam = [
+        {"orgao": row.orgao_nome, "contratos": row.total_editais}
+        for row in db.execute(text(query_orgaos), {"municipio": municipio})
+    ]
+
+    query_maiores_contratos = """
+        SELECT e.orgao_nome, e.objeto, e.data_encerramento, SUM(r.valor_homologado_total) AS total_homologado
+        FROM resultados_itens r
+        JOIN itens i ON r.numero_controle_pncp = i.numero_controle_pncp AND r.numero_item = i.numero_item
+        JOIN editais e ON i.numero_controle_pncp = e.numero_controle_pncp
+        WHERE e.municipio = :municipio AND e.uf = 'PB' AND e.data_encerramento >= date('now', '-12 months')
+        GROUP BY e.numero_controle_pncp
+        ORDER BY total_homologado DESC
+        LIMIT 10
+    """
+    maiores_contratos_ultimo_ano = [
+        {"contrato": row.objeto, "valor": row.total_homologado or 0.0}
+        for row in db.execute(text(query_maiores_contratos), {"municipio": municipio})
+    ]
+
+    query_evolucao_gastos = """
+        SELECT strftime('%Y-%m', e.data_encerramento) AS mes, SUM(r.valor_homologado_total) AS total_gasto
+        FROM resultados_itens r
+        JOIN itens i ON r.numero_controle_pncp = i.numero_controle_pncp AND r.numero_item = i.numero_item
+        JOIN editais e ON i.numero_controle_pncp = e.numero_controle_pncp
+        WHERE e.municipio = :municipio AND e.uf = 'PB' AND e.data_encerramento IS NOT NULL AND e.data_encerramento >= date('now', '-12 months')
+        GROUP BY mes
+        ORDER BY mes ASC
+    """
+    evolucao_gastos_mes = [
+        {"mes": row.mes, "valor": row.total_gasto or 0.0}
+        for row in db.execute(text(query_evolucao_gastos), {"municipio": municipio})
+    ]
+
+    query_mod_contratam = """
+        SELECT e.modalidade_nome, COUNT(DISTINCT e.numero_controle_pncp) AS total_editais
+        FROM editais e
+        WHERE e.municipio = :municipio AND e.uf = 'PB'
+        GROUP BY e.modalidade_nome
+        ORDER BY total_editais DESC
+    """
+    modalidades_mais_contratam = [
+        {"modalidade": row.modalidade_nome, "quantidade": row.total_editais}
+        for row in db.execute(text(query_mod_contratam), {"municipio": municipio})
+    ]
+
+    query_mod_gastam = """
+        SELECT e.modalidade_nome, SUM(r.valor_homologado_total) AS total_gasto
+        FROM resultados_itens r
+        JOIN itens i ON r.numero_controle_pncp = i.numero_controle_pncp AND r.numero_item = i.numero_item
+        JOIN editais e ON i.numero_controle_pncp = e.numero_controle_pncp
+        WHERE e.municipio = :municipio AND e.uf = 'PB'
+        GROUP BY e.modalidade_nome
+        ORDER BY total_gasto DESC
+    """
+    modalidades_mais_gastam = [
+        {"modalidade": row.modalidade_nome, "valor": row.total_gasto or 0.0}
+        for row in db.execute(text(query_mod_gastam), {"municipio": municipio})
+    ]
+
     return {
-        "contratos_pelo_municipio": 1200,
-        "gasto_pelo_municipio": 35000000.0,
-        "orgaos_mais_contratam": [
-            {"orgao": "Secretaria de Saúde", "contratos": 450},
-            {"orgao": "Secretaria de Educação", "contratos": 320},
-            {"orgao": "Gabinete do Prefeito", "contratos": 150},
-            {"orgao": "Secretaria de Obras", "contratos": 110},
-            {"orgao": "Secretaria de Segurança", "contratos": 85},
-        ],
-        "maiores_contratos_ultimo_ano": [
-            {"contrato": "Construção de Hospital", "valor": 15000000.0},
-            {"contrato": "Reforma de Escolas", "valor": 8500000.0},
-            {"contrato": "Compra de Medicamentos", "valor": 4200000.0},
-            {"contrato": "Pavimentação", "valor": 3800000.0},
-            {"contrato": "Merenda Escolar", "valor": 2900000.0},
-        ],
-        "evolucao_gastos_mes": [
-            {"mes": "Janeiro", "valor": 2500000.0},
-            {"mes": "Fevereiro", "valor": 3200000.0},
-            {"mes": "Março", "valor": 2800000.0},
-            {"mes": "Abril", "valor": 4100000.0},
-            {"mes": "Maio", "valor": 3900000.0},
-        ],
-        "modalidades_mais_contratam": [
-            {"modalidade": "Pregão Eletrônico", "quantidade": 520},
-            {"modalidade": "Dispensa de Licitação", "quantidade": 140},
-            {"modalidade": "Inexigibilidade", "quantidade": 85},
-            {"modalidade": "Concorrência", "quantidade": 45},
-            {"modalidade": "Tomada de Preços", "quantidade": 20},
-        ],
-        "modalidades_mais_gastam": [
-            {"modalidade": "Pregão Eletrônico", "valor": 120000000.0},
-            {"modalidade": "Concorrência", "valor": 80000000.0},
-            {"modalidade": "Dispensa de Licitação", "valor": 15000000.0},
-            {"modalidade": "Inexigibilidade", "valor": 10000000.0},
-            {"modalidade": "Tomada de Preços", "valor": 5000000.0},
-        ]
+        "contratos_pelo_municipio": contratos_pelo_municipio,
+        "gasto_pelo_municipio": gasto_pelo_municipio,
+        "orgaos_mais_contratam": orgaos_mais_contratam,
+        "maiores_contratos_ultimo_ano": maiores_contratos_ultimo_ano,
+        "evolucao_gastos_mes": evolucao_gastos_mes,
+        "modalidades_mais_contratam": modalidades_mais_contratam,
+        "modalidades_mais_gastam": modalidades_mais_gastam,
     }
