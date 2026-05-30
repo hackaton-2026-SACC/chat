@@ -1,8 +1,8 @@
-FROM python:3.13-alpine as base
+FROM python:3.13-alpine AS base
 
 WORKDIR /app
 
-COPY licitacoes.db .
+# COPY licitacoes.db . (Removido ou comentado porque está sendo ignorado no envio)
 
 COPY requirements.txt .
 
