@@ -1,6 +1,7 @@
 from typing_extensions import TypedDict
 
 class DashboardData(TypedDict):
+    total_estado: float
     orgaos_mais_contratam: list[dict[str, str | int]]
     municipios_mais_gastam: list[dict[str, str | int]]
     municipios_mais_contratam: list[dict[str, str | int]]

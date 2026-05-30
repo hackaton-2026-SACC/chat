@@ -6,6 +6,7 @@ router = APIRouter()
 @router.get("/")
 async def dashboardd() -> DashboardData:
     return {
+        "total_estado": 350000000.0,
         "orgaos_mais_contratam": [
             {"orgao": "Secretaria de Saúde", "contratos": 450},
             {"orgao": "Secretaria de Educação", "contratos": 320},
