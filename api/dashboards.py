@@ -1,9 +1,10 @@
 from fastapi import APIRouter
+from api.models import DashboardResponse, MunicipioDashboardResponse
 
 router = APIRouter()
 
 @router.get("/")
-async def dashboardd():
+async def dashboardd() -> DashboardResponse:
     return {
         "orgaos_mais_contratam": [
             {"orgao": "Secretaria de Saúde", "contratos": 450},
@@ -26,7 +27,14 @@ async def dashboardd():
             {"municipio": "Belo Horizonte", "gasto": 35000000.0},
             {"municipio": "Curitiba", "gasto": 30000000.0},
         ],
-        "modalidades_gastos": [
+        "modalidades_mais_contratam": [
+            {"modalidade": "Pregão Eletrônico", "valor": 120000000.0},
+            {"modalidade": "Concorrência", "valor": 80000000.0},
+            {"modalidade": "Dispensa de Licitação", "valor": 15000000.0},
+            {"modalidade": "Inexigibilidade", "valor": 10000000.0},
+            {"modalidade": "Tomada de Preços", "valor": 5000000.0},
+        ],
+        "modalidades_mais_gastam": [
             {"modalidade": "Pregão Eletrônico", "valor": 120000000.0},
             {"modalidade": "Concorrência", "valor": 80000000.0},
             {"modalidade": "Dispensa de Licitação", "valor": 15000000.0},
@@ -43,7 +51,7 @@ async def dashboardd():
     }
 
 @router.get("/{municipio_ibge_id}")
-async def municipio_dashboard(municipio_ibge_id: str):
+async def municipio_dashboard(municipio_ibge_id: str) -> MunicipioDashboardResponse:
     return {
         "orgaos_mais_contratam": [
             {"orgao": "Secretaria de Saúde", "contratos": 450},
@@ -66,11 +74,18 @@ async def municipio_dashboard(municipio_ibge_id: str):
             {"mes": "Abril", "valor": 4100000.0},
             {"mes": "Maio", "valor": 3900000.0},
         ],
-        "modalidades_gastos": [
+        "modalidades_mais_contratam": [
             {"modalidade": "Pregão Eletrônico", "quantidade": 520},
             {"modalidade": "Dispensa de Licitação", "quantidade": 140},
             {"modalidade": "Inexigibilidade", "quantidade": 85},
             {"modalidade": "Concorrência", "quantidade": 45},
             {"modalidade": "Tomada de Preços", "quantidade": 20},
+        ],
+        "modalidades_mais_gastam": [
+            {"modalidade": "Pregão Eletrônico", "valor": 120000000.0},
+            {"modalidade": "Concorrência", "valor": 80000000.0},
+            {"modalidade": "Dispensa de Licitação", "valor": 15000000.0},
+            {"modalidade": "Inexigibilidade", "valor": 10000000.0},
+            {"modalidade": "Tomada de Preços", "valor": 5000000.0},
         ]
     }
