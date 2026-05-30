@@ -4,3 +4,4 @@ langchain
 langgraph
 langchain-openai
 pydantic-settings
+sqlalchemy

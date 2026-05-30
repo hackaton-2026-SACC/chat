@@ -5,6 +5,12 @@ from bot.graph import app_graph
 from langchain_core.messages import HumanMessage
 from api.dashboards import router as dashboard_router
 
+from core.db import engine, Base
+import api.db_models as db_models
+
+# Cria as tabelas no banco de dados SQLite caso não existam
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(title="Chatbot API")
 
 app.add_middleware(
