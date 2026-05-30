@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from bot.graph import app_graph
 from langchain_core.messages import HumanMessage
+from api.api import router as dashboard_router
 
 app = FastAPI(title="Chatbot API")
 
@@ -13,6 +14,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(dashboard_router)
 
 class ChatRequest(BaseModel):
     request_id: str
