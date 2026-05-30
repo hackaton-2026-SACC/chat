@@ -122,6 +122,25 @@ def dashboardd(db: Session = Depends(get_db)) -> DashboardData:
 @router.get("/{municipio}")
 def municipio_dashboard(municipio: str, db: Session = Depends(get_db)) -> DashboardMunicipioData:
     
+    # 1. Busca todos os municipios distintos na base para fazer match tolerante a acentos
+    query_all_mun = "SELECT DISTINCT municipio FROM editais WHERE uf = 'PB' AND municipio IS NOT NULL AND municipio != ''"
+    all_mun_rows = db.execute(text(query_all_mun)).fetchall()
+    
+    import unicodedata
+    def normalize(val: str) -> str:
+        val = val.strip().lower()
+        val = "".join(c for c in unicodedata.normalize('NFD', val) if unicodedata.category(c) != 'Mn')
+        return val.replace("-", "").replace(" ", "")
+        
+    normalized_target = normalize(municipio)
+    matched_municipio = municipio
+    
+    for row in all_mun_rows:
+        db_mun = row[0]
+        if normalize(db_mun) == normalized_target:
+            matched_municipio = db_mun
+            break
+
     query_contratos_mun = """
         SELECT count(*) AS total_contratos
         FROM resultados_itens r
@@ -129,7 +148,7 @@ def municipio_dashboard(municipio: str, db: Session = Depends(get_db)) -> Dashbo
         JOIN editais e ON i.numero_controle_pncp = e.numero_controle_pncp
         WHERE e.municipio = :municipio AND e.uf = 'PB'
     """
-    contratos_pelo_municipio = db.execute(text(query_contratos_mun), {"municipio": municipio}).scalar() or 0
+    contratos_pelo_municipio = db.execute(text(query_contratos_mun), {"municipio": matched_municipio}).scalar() or 0
 
     query_gasto_mun = """
         SELECT SUM(r.valor_homologado_total) AS gasto_pelo_municipio
@@ -138,7 +157,7 @@ def municipio_dashboard(municipio: str, db: Session = Depends(get_db)) -> Dashbo
         JOIN editais e ON i.numero_controle_pncp = e.numero_controle_pncp
         WHERE e.municipio = :municipio AND e.uf = 'PB'
     """
-    gasto_pelo_municipio = db.execute(text(query_gasto_mun), {"municipio": municipio}).scalar() or 0.0
+    gasto_pelo_municipio = db.execute(text(query_gasto_mun), {"municipio": matched_municipio}).scalar() or 0.0
 
     query_orgaos = """
         SELECT e.orgao_nome, COUNT(DISTINCT e.numero_controle_pncp) AS total_editais
@@ -150,7 +169,7 @@ def municipio_dashboard(municipio: str, db: Session = Depends(get_db)) -> Dashbo
     """
     orgaos_mais_contratam = [
         {"orgao": row.orgao_nome, "contratos": row.total_editais}
-        for row in db.execute(text(query_orgaos), {"municipio": municipio})
+        for row in db.execute(text(query_orgaos), {"municipio": matched_municipio})
     ]
 
     query_maiores_contratos = """
@@ -165,7 +184,7 @@ def municipio_dashboard(municipio: str, db: Session = Depends(get_db)) -> Dashbo
     """
     maiores_contratos_ultimo_ano = [
         {"contrato": row.objeto, "valor": row.total_homologado or 0.0}
-        for row in db.execute(text(query_maiores_contratos), {"municipio": municipio})
+        for row in db.execute(text(query_maiores_contratos), {"municipio": matched_municipio})
     ]
 
     query_evolucao_gastos = """
@@ -179,7 +198,7 @@ def municipio_dashboard(municipio: str, db: Session = Depends(get_db)) -> Dashbo
     """
     evolucao_gastos_mes = [
         {"mes": row.mes, "valor": row.total_gasto or 0.0}
-        for row in db.execute(text(query_evolucao_gastos), {"municipio": municipio})
+        for row in db.execute(text(query_evolucao_gastos), {"municipio": matched_municipio})
     ]
 
     query_mod_contratam = """
@@ -191,7 +210,7 @@ def municipio_dashboard(municipio: str, db: Session = Depends(get_db)) -> Dashbo
     """
     modalidades_mais_contratam = [
         {"modalidade": row.modalidade_nome, "quantidade": row.total_editais}
-        for row in db.execute(text(query_mod_contratam), {"municipio": municipio})
+        for row in db.execute(text(query_mod_contratam), {"municipio": matched_municipio})
     ]
 
     query_mod_gastam = """
@@ -205,7 +224,7 @@ def municipio_dashboard(municipio: str, db: Session = Depends(get_db)) -> Dashbo
     """
     modalidades_mais_gastam = [
         {"modalidade": row.modalidade_nome, "valor": row.total_gasto or 0.0}
-        for row in db.execute(text(query_mod_gastam), {"municipio": municipio})
+        for row in db.execute(text(query_mod_gastam), {"municipio": matched_municipio})
     ]
 
     return {
@@ -216,4 +235,5 @@ def municipio_dashboard(municipio: str, db: Session = Depends(get_db)) -> Dashbo
         "evolucao_gastos_mes": evolucao_gastos_mes,
         "modalidades_mais_contratam": modalidades_mais_contratam,
         "modalidades_mais_gastam": modalidades_mais_gastam,
+        "nome_real": matched_municipio
     }

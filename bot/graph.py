@@ -16,8 +16,23 @@ class State(TypedDict):
     sql_query: str
     sql_result: str
 
-# Initialize the model with the API key from settings
-llm = ChatOpenAI(api_key=settings.openai_api_key, model="gpt-4o-mini", temperature=0) if settings.openai_api_key else None
+# Initialize the model with dynamic support for OpenRouter (sk-or-) or standard OpenAI
+if settings.openai_api_key:
+    if settings.openai_api_key.startswith("sk-or-"):
+        llm = ChatOpenAI(
+            api_key=settings.openai_api_key,
+            base_url="https://openrouter.ai/api/v1",
+            model="openai/gpt-4o-mini",
+            temperature=0
+        )
+    else:
+        llm = ChatOpenAI(
+            api_key=settings.openai_api_key,
+            model="gpt-4o-mini",
+            temperature=0
+        )
+else:
+    llm = None
 
 class TopicCheck(BaseModel):
     is_valid: bool = Field(description="True se a pergunta for sobre licitações, contratos públicos e respeitar os direitos humanos. False caso contrário.")
@@ -29,7 +44,7 @@ def check_topic(state: State):
     last_message = state["messages"][-1].content
     
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "Você é um classificador. Analise se a pergunta do usuário é sobre licitações, contratos e compras públicas. Além disso, verifique se a pergunta respeita os direitos humanos (sem conteúdo de ódio ou preconceito). Retorne is_valid=True se a pergunta for relevante sobre o tema e ética. Retorne False caso a pergunta seja sobre qualquer outro assunto, como 'Qual é o atual presidente?'."),
+        ("system", "Você é um classificador de tópicos para um sistema de transparência de compras públicas. Analise se a pergunta do usuário se refere a compras públicas, fornecedores, licitações, gastos, contratos, orçamentos, municípios da Paraíba ou itens licitados. Como o usuário fará perguntas diretas como 'qual maior fornecedor' ou 'quanto gastamos com combustível' ou 'maior fornecedor de campina grande', considere esses temas como totalmente VÁLIDOS (is_valid=True). Apenas retorne is_valid=False se a pergunta for completamente desconexa (como piadas, receitas de bolo, futebol) ou violar direitos humanos."),
         ("human", "{question}")
     ])
     
