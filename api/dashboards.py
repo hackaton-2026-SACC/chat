@@ -1,10 +1,10 @@
 from fastapi import APIRouter
-from api.models import DashboardResponse, MunicipioDashboardResponse
+from api.models import DashboardData, DashboardMunicipioData
 
 router = APIRouter()
 
 @router.get("/")
-async def dashboardd() -> DashboardResponse:
+async def dashboardd() -> DashboardData:
     return {
         "orgaos_mais_contratam": [
             {"orgao": "Secretaria de Saúde", "contratos": 450},
@@ -51,8 +51,9 @@ async def dashboardd() -> DashboardResponse:
     }
 
 @router.get("/{municipio_ibge_id}")
-async def municipio_dashboard(municipio_ibge_id: str) -> MunicipioDashboardResponse:
+async def municipio_dashboard(municipio_ibge_id: str) -> DashboardMunicipioData:
     return {
+        "gasto_pelo_municipio": 35000000.0,
         "orgaos_mais_contratam": [
             {"orgao": "Secretaria de Saúde", "contratos": 450},
             {"orgao": "Secretaria de Educação", "contratos": 320},

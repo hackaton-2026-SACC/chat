@@ -9,6 +9,7 @@ class DashboardData(TypedDict):
     evolucao_gastos_ano: list[dict[str, str | float]]
 
 class DashboardMunicipioData(TypedDict):
+    gasto_pelo_municipio: float
     orgaos_mais_contratam: list[dict[str, str | int]]
     maiores_contratos_ultimo_ano: list[dict[str, str | float]]
     evolucao_gastos_mes: list[dict[str, str | float]]
