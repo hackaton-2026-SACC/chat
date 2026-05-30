@@ -1,5 +1,6 @@
 services:
   chat:
+    image: gabrielemannuel/hackaton:chat-app-latest
     build: .
     ports:
       - "8000:8080"
