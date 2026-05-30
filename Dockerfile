@@ -2,6 +2,8 @@ FROM python:3.13-alpine as base
 
 WORKDIR /app
 
+COPY licitacoes.db .
+
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
